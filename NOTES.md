@@ -39,3 +39,11 @@ Keep this file updated as you go: it is the map for this server.
 
 - kinnay/NintendoClients wiki (NEX protocols, DataStore), Pretendo developer docs, exlaunch.
 - Sibling servers: `torchlight-2` (NEX + Pia, stripped, live), `super-mario-maker-2` (DataStore).
+## First launch with aw-hack (2026-09-14 02:24, CFW Switch)
+
+- Game launched and ran with aw-hack installed: the NPDM built from the game's own values (16 MB system resource,
+  optimized allocation) works; 25+ hooks installed, log opened after nn::fs::SetAllocator.
+- **No network activity at all** from boot to the main menu: no nsd resolve, getaddrinfo or connect. The NEX login only
+  happens when online play starts, and the game gates online behind unlocking ID tags. Next: a save with ID tags
+  unlocked (JKSV), then one online attempt for the game server id; access key still to be read from
+  global-metadata.dat.
