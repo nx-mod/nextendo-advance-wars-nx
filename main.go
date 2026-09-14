@@ -116,6 +116,7 @@ func main() {
 	secureEndpoint.Register(nex.ProtocolNATTraversal, nex.NATTraversalHandler())
 	secureEndpoint.Register(nex.ProtocolRanking, nex.RankingHandler())
 	secureEndpoint.Register(nex.ProtocolUtility, nex.UtilityHandler())
+	secureEndpoint.Register(protocolDataStore, newDataStore().handler())
 	secureEndpoint.RegisterFallback(func(c *nex.Connection, req *nex.RMCMessage) *nex.RMCMessage {
 		fmt.Printf("[AW Secure] UNHANDLED pid=%d proto=%#x method=%d call=%d body=%x\n", c.PID, req.Protocol, req.Method, req.CallID, req.Body)
 		return nex.NewRMCSuccess(c.Settings, req.Protocol, req.Method, req.CallID, nil)

@@ -18,6 +18,8 @@ nextendo_secret.key
 *.der
 # Captures and runtime logs
 captures/
+# DataStore objects (players' ID tags, shared maps)
+/datastore/
 stderr.txt
 stdout.txt
 *.log
