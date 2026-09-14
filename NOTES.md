@@ -6,7 +6,8 @@ Keep this file updated as you go: it is the map for this server.
 - Binary: `sd:/atmosphere/contents/0100300012F2A000/exefs/main` (dumped 2026-09-14), 36,928,540 bytes,
   SHA-256 `F920CFADE7D5CC55DC06C674669D4A904DE6730F4719DA70797D54681F4F4AF2`; segments text @0,
   rodata @0x0311F000, data @0x046DB000. Copy + segments in `aw-hack/capture/nso/` (git-ignored).
-- Status (2026-09-14): **scaffold only, never run against the game.**
+- Status (2026-09-14): **online login works on a real Switch**; ID tags stored (DataStore). Versus play not tested yet
+  (friends-only, needs a second player).
 
 ## Online stack (from the binary)
 
@@ -68,3 +69,26 @@ literal in the literal table. `Nex.NgsLogin(gameServerId, accessKey)` is the log
 ID tags are NEX **DataStore** objects ("Getting IDTag DataStores", "IDTag DataStore Create Error", "Not online, can't
 get IDTag DataStore"), data type 4. Map sharing uses DataStore type 1 ("[NETMAPSHARE]"), async play type 0, with
 notifications NEW_MATCH / TURN_DONE / MAP_SHARE.
+
+## First online session (2026-09-14 03:03, CFW Switch, ID tags unlocked)
+
+"Online connection successful" in game. Server side:
+
+1. sni-router routes `g27723500-lp1.s.n.srv.nintendo.net` to 8459; `ValidateAndRequestTicketWithParam` (0xA.6) with the
+   console NSA id, resolved to the account pid through nextendo-account.
+2. Secure connect, `Register` (0xB.1).
+3. **DataStore `ChangeMeta` (0x73.38)**, no PostObject first: dataId 0, persistence target {own pid, slot 0},
+   modifiesFlag 0x91 (name, metaBinary, dataType), name `"<idtag>"`, dataType 4, metaBinary `"Version=1\nForce=-1\n"`,
+   later `"Version=1\nForce=2\n"`. permission/delPermission in the param are the unset default (3, private) and not
+   flagged. The game re-sends it each time the online menu refreshes.
+4. `0x6D.52` (BrowseMatchmakeSessionNoHolder) after each ChangeMeta: answered with the open sessions (none).
+
+Online play has **no random mode**: only "Pick a friend" and invites (`TrySendInvite`, `popup_no_friends_online`,
+"Other account for map is not a friend"). A match needs two consoles/emulators whose accounts are Nextendo friends.
+Citron (S22) crashes running the game.
+
+`datastore.go` answers the DataStore calls: ChangeMeta creates the caller's missing persistent object from the param
+(the game never posts its ID tag), and PostMetaBinary, GetMeta, GetMetasMultipleParam, SearchObject(Light),
+GetPersistenceInfo and DeleteObject serve those objects to friends. One JSON file per object in `datastore/`
+(`AW_DATASTORE_DIR`). Next to watch: the calls a friend's console makes to read the ID tag, the invite/join
+matchmaking calls, and map share (DataStore type 1, likely PreparePostObject with an upload URL).
