@@ -7,8 +7,7 @@
 //   - auth   (:443 behind sni-router)  TicketGranting: LoginEx issues the Kerberos ticket.
 //   - secure (:60015)                  SecureConnection + matchmaking + NAT traversal + ranking + utility.
 //
-// Unknown until aw-hack runs (see NOTES.md): the access key (not in main; likely a C# literal in the
-// romfs global-metadata.dat), the game server id and the DataStore calls it makes.
+// Known from NetworkConfig in global-metadata.dat: access key c001f85f, game server 0x27723500\n// (g27723500-lp1.s.n.srv.nintendo.net). Still unknown: the DataStore calls (ID tags, map share).
 package main
 
 import (
@@ -33,8 +32,10 @@ const (
 )
 
 var (
-	// accessKey is the game's NEX access key. Unknown yet (see NOTES.md): no default.
-	accessKey = envOr("AW_ACCESS_KEY", "")
+	// accessKey is the game's NEX access key: NetworkConfig.omas_server_accessKey, a C# const
+	// read from the IL2CPP field default values in romfs global-metadata.dat (see NOTES.md).
+	// The same class gives the game server id, omas_server_gameId = 0x27723500.
+	accessKey = envOr("AW_ACCESS_KEY", "c001f85f")
 	// NEX 4.6.4 per the SDK path in the game's main.
 	nexVersion = envOrInt("AW_NEX_VERSION", 40604)
 

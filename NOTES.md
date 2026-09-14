@@ -47,3 +47,24 @@ Keep this file updated as you go: it is the map for this server.
   happens when online play starts, and the game gates online behind unlocking ID tags. Next: a save with ID tags
   unlocked (JKSV), then one online attempt for the game server id; access key still to be read from
   global-metadata.dat.
+## Access key and game server id (2026-09-14, from global-metadata.dat)
+
+Unity keeps C# const values in the IL2CPP metadata's field default values, not in main. Parsed from
+`romfs:/Data/Managed/Metadata/global-metadata.dat` (IL2CPP metadata v27, 7,163,420 bytes, copy in `aw-hack/capture/`):
+
+| NetworkConfig field | Value |
+|---|---|
+| `omas_server_accessKey` | **`c001f85f`** (string, the NEX access key) |
+| `omas_server_gameId` | **`0x27723500`**: host `g27723500-lp1.s.n.srv.nintendo.net` |
+| `kSwitchLocalCommunicationId` | `0x0100300012F2A000` |
+| `nex_pluginMemSize` / `nex_nexMemSize` / `nex_reserveMemSize` | 0x200000 / 0x264000 / 0x64000 |
+| `AsyncDataStoreType` / `MapShareDataStoreType` / `IDTagDataStoreType` | 0 / 1 / 4 |
+| `CryptoKey` | 64-char string (likely the Pia session key; not needed by the server) |
+
+How: header +0x40 fieldDefaultValues (12-byte entries: field index, type index, data index), +0x48 default value data,
++0x60 field definitions (name index into the identifier strings at +0x18). The access key is also the only 8-hex
+literal in the literal table. `Nex.NgsLogin(gameServerId, accessKey)` is the login entry point.
+
+ID tags are NEX **DataStore** objects ("Getting IDTag DataStores", "IDTag DataStore Create Error", "Not online, can't
+get IDTag DataStore"), data type 4. Map sharing uses DataStore type 1 ("[NETMAPSHARE]"), async play type 0, with
+notifications NEW_MATCH / TURN_DONE / MAP_SHARE.
