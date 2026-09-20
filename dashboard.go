@@ -92,13 +92,13 @@ func noteRMC(c *nex.Connection, req *nex.RMCMessage) {
 func gameModeName(mode uint32) string {
 	switch mode {
 	case 1:
-		return "Course"
+		return "Race"
 	case 2:
-		return "Course (équipe)"
+		return "Race (team)"
 	case 3:
-		return "Bataille"
+		return "Battle"
 	case 4:
-		return "Bataille (équipe)"
+		return "Battle (team)"
 	default:
 		return fmt.Sprintf("Mode %d", mode)
 	}
@@ -256,7 +256,7 @@ func buildStats(endpoint *nex.Endpoint, mm *nex.Matchmaking) apiStats {
 		}
 		state := "en recherche"
 		if len(g.Participants) >= 2 {
-			state = "apparié"
+			state = "matched"
 		}
 		lps := make([]apiLobbyP, 0, len(g.Participants))
 		for _, p := range g.Participants {
@@ -302,7 +302,7 @@ func buildStats(endpoint *nex.Endpoint, mm *nex.Matchmaking) apiStats {
 		state := "en ligne"
 		if gid != 0 {
 			inLobby++
-			state = "dans un lobby"
+			state = "in a lobby"
 		}
 		modeLabel := ""
 		if m := pidMode[pid]; m != 0 {
@@ -361,10 +361,10 @@ func startDashboard(endpoint *nex.Endpoint, mm *nex.Matchmaking) {
 	port := envOr("DASH_PORT", "8097")
 	token := envOr("DASH_TOKEN", "")
 
-	// SÉCURITÉ : sans jeton configuré on REFUSE, au lieu d'ouvrir l'API à tout le monde.
-	// L'ancienne condition (token == "") laissait la liste des joueurs — pseudos, PID et
-	// adresses IP — lisible sans authentification dès que la variable manquait.
-	// Comparaison à temps constant : un test == fuit la longueur du préfixe correct.
+	// SECURITY: with no token configured we REFUSE, instead of opening the API to everyone.
+	// The old condition (token == "") left the player list (names, PIDs and IP addresses)
+	// readable without authentication whenever the variable was missing.
+	// Constant-time comparison: a plain == leaks the length of the correct prefix.
 	authed := func(w http.ResponseWriter, r *http.Request) bool {
 		if token != "" && subtle.ConstantTimeCompare([]byte(r.URL.Query().Get("key")), []byte(token)) == 1 {
 			return true
@@ -382,11 +382,11 @@ func startDashboard(endpoint *nex.Endpoint, mm *nex.Matchmaking) {
 		w.Header().Set("Cache-Control", "no-store")
 		_ = json.NewEncoder(w).Encode(buildStats(endpoint, mm))
 	})
-	// /api/kick — libère un compte resté coincé derrière une connexion morte, sans
-	// redémarrer le serveur (ce qui déconnecterait tous les joueurs en partie).
-	//   ?pid=<PID>     déconnecte toutes les connexions de ce compte
-	//   ?rvcid=<id>    déconnecte une connexion précise
-	//   (sans param.)  évince immédiatement toutes les connexions mortes
+	// /api/kick frees an account stuck behind a dead connection, without restarting the
+	// server (which would disconnect every player mid-game).
+	//   ?pid=<PID>     disconnects all connections of this account
+	//   ?rvcid=<id>    disconnects one specific connection
+	//   (no param.)    immediately evicts all dead connections
 	mux.HandleFunc("/api/kick", func(w http.ResponseWriter, r *http.Request) {
 		if !authed(w, r) {
 			return

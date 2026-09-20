@@ -1,12 +1,12 @@
 package main
 
-// Online GATES enforced at NEX login — the SAME rules as the old the previous stack infra:
-//   - Compte Nextendo OBLIGATOIRE (requireAccount): aucune identité de compte -> refus.
-//   - Online = comptes Nextendo UNIQUEMENT: un NSA de vraie console non lié / un serveur
-//     compte injoignable -> refus (fail-CLOSED : un profil non-Nextendo n'entre jamais).
-//   - #6 e-mail vérifié OBLIGATOIRE.
-//   - #5 un seul endroit à la fois (présence RÉELLE via le monitoring).
-//   - compte désactivé -> refus.
+// Online GATES enforced at NEX login, the same rules as the other Nextendo game servers:
+//   - A Nextendo account is REQUIRED (requireAccount): no account identity -> refused.
+//   - Online = Nextendo accounts ONLY: a real console's NSA id that is not linked, or an
+//     unreachable account server -> refused (fail-CLOSED: a non-Nextendo profile never gets in).
+//   - #6 a verified e-mail is REQUIRED.
+//   - #5 one place at a time (REAL presence, through monitoring).
+//   - a disabled account -> refused.
 //
 // The account server (nextendo-account) owns the gate logic; the auth server calls
 // /internal/online-check + /api/nsa and rejects the LoginEx on a block. FAIL-OPEN on an
@@ -56,26 +56,26 @@ func nextendoOnlineCheck(pid uint64, kind string) (bool, string) {
 	return out.Allow, out.Reason
 }
 
-// nsaStatus distingue les issues d'une résolution NSA -> compte Nextendo.
+// nsaStatus is the outcome of resolving an NSA id to a Nextendo account.
 type nsaStatus int
 
 const (
-	nsaOK          nsaStatus = iota // NSA lié à un compte Nextendo (pid valide)
-	nsaUnknown                      // 404 : aucun compte ne possède ce NSA -> profil non-Nextendo
-	nsaUnreachable                  // serveur compte injoignable -> identité non vérifiable
+	nsaOK          nsaStatus = iota // NSA linked to a Nextendo account (valid pid)
+	nsaUnknown                      // 404: no account owns this NSA -> non-Nextendo profile
+	nsaUnreachable                  // account server unreachable -> identity cannot be verified
 )
 
 var (
 	nsaCacheMu sync.Mutex
 	nsaCache   = map[uint64]uint64{}
-	// nsaNegCache memoise les resolutions QUI ONT ECHOUE (404 / injoignable). Sans lui,
-	// chaque tentative de login portant un NSA inconnu declenche un appel sortant vers le
-	// service de comptes PARTAGE : un flood de NSA bidons sur le port d'auth (non
-	// authentifie) se transforme en amplification contre le service dont TOUS les jeux
-	// dependent. Un TTL court garde la reactivite quand un compte vient d'etre lie.
+	// nsaNegCache remembers resolutions that FAILED (404 / unreachable). Without it, every
+	// login attempt carrying an unknown NSA triggers an outgoing call to the SHARED account
+	// service: a flood of bogus NSA ids on the (unauthenticated) auth port would turn into
+	// amplification against the service ALL the games depend on. A short TTL keeps things
+	// responsive when an account has just been linked.
 	nsaNegCache = map[uint64]nsaNegEntry{}
-	// nsaInflight plafonne les appels /api/nsa SIMULTANES : au-dela, on repond
-	// "injoignable" (fail-closed) sans ouvrir une connexion de plus.
+	// nsaInflight caps SIMULTANEOUS /api/nsa calls: beyond it we answer
+	// "unreachable" (fail-closed) without opening another connection.
 	nsaInflight = make(chan struct{}, nsaMaxInflight)
 )
 
@@ -90,9 +90,9 @@ const (
 	nsaNegCacheMax = 4096
 )
 
-// resolveNSAtoPID mappe un NSA id (baasUserID d'une vraie Switch) vers le PID du compte
-// Nextendo : (pid, nsaOK) si lié, (0, nsaUnknown) si aucun compte ne le possède,
-// (0, nsaUnreachable) si injoignable. Les résultats positifs sont cachés.
+// resolveNSAtoPID maps an NSA id (a real Switch's baasUserID) to the Nextendo account's
+// PID: (pid, nsaOK) if linked, (0, nsaUnknown) if no account owns it,
+// (0, nsaUnreachable) if the account server cannot be reached. Positive results are cached.
 func resolveNSAtoPID(nsa uint64) (uint64, nsaStatus) {
 	nsaCacheMu.Lock()
 	if pid, ok := nsaCache[nsa]; ok {
@@ -101,16 +101,16 @@ func resolveNSAtoPID(nsa uint64) (uint64, nsaStatus) {
 	}
 	if neg, ok := nsaNegCache[nsa]; ok && time.Since(neg.at) < nsaNegTTL {
 		nsaCacheMu.Unlock()
-		return 0, neg.status // deja resolu comme inconnu/injoignable recemment : pas de nouvel appel
+		return 0, neg.status // recently resolved as unknown/unreachable: no new call
 	}
 	nsaCacheMu.Unlock()
 
-	// Plafond de requetes sortantes simultanees vers le service de comptes partage.
+	// Cap on simultaneous outgoing requests to the shared account service.
 	select {
 	case nsaInflight <- struct{}{}:
 		defer func() { <-nsaInflight }()
 	default:
-		return 0, nsaUnreachable // sature : fail-closed, sans ouvrir de connexion
+		return 0, nsaUnreachable // saturated: fail-closed, without opening a connection
 	}
 
 	resp, err := gateClient.Get(fmt.Sprintf("%s/api/nsa?id=%d", accountBaseURL, nsa))
@@ -136,14 +136,14 @@ func resolveNSAtoPID(nsa uint64) (uint64, nsaStatus) {
 	}
 	nsaCacheMu.Lock()
 	nsaCache[nsa] = out.PID
-	delete(nsaNegCache, nsa) // le compte vient d'etre lie : la memoire negative ne doit pas survivre
+	delete(nsaNegCache, nsa) // the account was just linked: the negative memory must not outlive it
 	nsaCacheMu.Unlock()
 	return out.PID, nsaOK
 }
 
-// rememberNSAFailure memoise un echec de resolution pour nsaNegTTL. La table est bornee :
-// un flood de NSA bidons ne doit pas la faire grossir sans limite (on la vide entierement
-// au plafond plutot que de la laisser croitre — les entrees ne valent que 60s de toute facon).
+// rememberNSAFailure remembers a failed resolution for nsaNegTTL. The table is bounded:
+// a flood of bogus NSA ids must not grow it without limit (it is emptied entirely at the
+// cap rather than left to grow; entries are only worth 60 s anyway).
 func rememberNSAFailure(nsa uint64, st nsaStatus) {
 	nsaCacheMu.Lock()
 	if len(nsaNegCache) >= nsaNegCacheMax {
