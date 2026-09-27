@@ -217,6 +217,7 @@ type apiStats struct {
 	Gatherings     []apiGathering `json:"gatherings"`
 	Events         []apiEvent     `json:"events"`
 	Methods        []apiMethod    `json:"methods"`
+	Unhandled      []apiUnhandled `json:"unhandled"`
 }
 
 func dispName(pid uint64) string { return fmt.Sprintf("Joueur-%d", pid%100000) }
@@ -353,6 +354,7 @@ func buildStats(endpoint *nex.Endpoint, mm *nex.Matchmaking) apiStats {
 		Gatherings: gs,
 		Events:     ev,
 		Methods:    ms,
+		Unhandled:  snapshotUnhandled(),
 	}
 }
 

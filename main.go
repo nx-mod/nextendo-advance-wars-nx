@@ -89,6 +89,7 @@ func main() {
 	authEndpoint.Register(nex.ProtocolTicketGranting, authCfg.Handler())
 	authEndpoint.RegisterFallback(func(c *nex.Connection, req *nex.RMCMessage) *nex.RMCMessage {
 		// Unknown auth calls are logged in full: this server is still being mapped.
+		noteUnhandled(c, req)
 		fmt.Printf("[AW Auth] UNHANDLED pid=%d proto=%#x method=%d call=%d body=%x\n", c.PID, req.Protocol, req.Method, req.CallID, req.Body)
 		return nex.NewRMCSuccess(c.Settings, req.Protocol, req.Method, req.CallID, nil)
 	})
@@ -118,6 +119,7 @@ func main() {
 	secureEndpoint.Register(nex.ProtocolUtility, nex.UtilityHandler())
 	secureEndpoint.Register(protocolDataStore, newDataStore().handler())
 	secureEndpoint.RegisterFallback(func(c *nex.Connection, req *nex.RMCMessage) *nex.RMCMessage {
+		noteUnhandled(c, req)
 		fmt.Printf("[AW Secure] UNHANDLED pid=%d proto=%#x method=%d call=%d body=%x\n", c.PID, req.Protocol, req.Method, req.CallID, req.Body)
 		return nex.NewRMCSuccess(c.Settings, req.Protocol, req.Method, req.CallID, nil)
 	})

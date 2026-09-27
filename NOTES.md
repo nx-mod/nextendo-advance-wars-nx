@@ -26,7 +26,11 @@ Keep this file updated as you go: it is the map for this server.
 2. **Game server id**: aw-hack logs `nsd resolve 'g<id>-%.s.n.srv.nintendo.net'`. Add the sni-router route
    (`BACKEND_AW=127.0.0.1:8459`).
 3. **main.npdm**: dump the game's own exefs `main.npdm` before installing aw-hack (a generic one crashed World War Z).
-4. The RMC calls it makes, DataStore first: unhandled ones are logged in full (`[AW Secure] UNHANDLED ...`).
+4. The RMC calls it makes, DataStore first: unhandled ones are logged in full
+   (`[AW Secure] UNHANDLED ...`) and now recorded structurally by `unhandled.go`
+   (proto/method, count, last body sample), surfaced on the dashboard under
+   `/api/stats` → `unhandled`. Watch that list to map map-share and the friend's
+   ID-tag reads without scraping the log.
 
 ## Ports (local stack)
 
