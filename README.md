@@ -1,5 +1,7 @@
 # advance-wars
 
+*(still in alpha testing)*
+
 **A new game server implementation by nx-mod** for the Nextendo Network.
 
 NEX game server for **Advance Wars 1+2: Re-Boot Camp** (Nintendo Switch, `0100300012F2A000`), built on the NextendoNetwork [nextendo-nex](https://github.com/NextendoNetwork/nextendo-nex) core. Source only: no binaries, no certs, no game assets. Not affiliated with WayForward, Intelligent Systems, Nintendo.
