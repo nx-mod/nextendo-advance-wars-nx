@@ -63,3 +63,7 @@ Game: Advance Wars 1+2: Re-Boot Camp, title `0100300012F2A000`, game server id `
 - **[Pretendo Network](https://pretendo.network)**: NEX documentation ([developer docs](https://developer.pretendo.network/overview/nex)).
 
 References were read and reimplemented; no code was copied.
+
+## Credits
+
+Built by nx-mod for the **Nextendo Network**, on the work of the Nextendo Network team — https://nextendo.network. Nextendo is awesome.
